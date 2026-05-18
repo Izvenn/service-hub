@@ -21,7 +21,8 @@ class ProcessTicketAttachment implements ShouldQueue
 
     public function handle(): void
     {
-        $this->ticket->loadMissing('project');
+        // Carrega o detalhe para podermos manipular o texto
+        $this->ticket->loadMissing(['detail']);
 
         if (! $this->ticket->attachment_path || ! Storage::disk('public')->exists($this->ticket->attachment_path)) {
             return;
@@ -30,15 +31,29 @@ class ProcessTicketAttachment implements ShouldQueue
         $content = Storage::disk('public')->get($this->ticket->attachment_path);
         $data = json_decode($content, true);
 
-        $this->ticket->detail()->updateOrCreate(
-            ['ticket_id' => $this->ticket->id],
-            [
+        // --- FORMATAÇÃO BONITA ---
+        $report = "\n\n".str_repeat('=', 40)."\n";
+        $report .= str_repeat('-', 40)."\n";
 
-                'payload' => $data ?? ['raw_text' => $content],
-            ]
-        );
+        if ($data && is_array($data)) {
+            foreach ($data as $key => $value) {
+                $label = ucfirst(str_replace(['_', '-'], ' ', $key));
+                $val = is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value;
+                $report .= " {$label}: {$val}\n";
+            }
+        } else {
+            $report .= "Conteúdo em Anexo: \n{$content}\n";
+        }
+        $report .= str_repeat('=', 40);
+
+        // --- LÓGICA DE SUBSTITUIÇÃO ---
+        // Removemos a mensagem de "Aguardando..." e colocamos o relatório
+        $currentInfo = $this->ticket->detail->technical_info;
+        $cleanInfo = str_replace('[Status: Aguardando processamento do anexo...]', $report, $currentInfo);
+
         $this->ticket->detail()->update([
-            'payload' => $data ?? ['raw_text' => $content],
+            'technical_info' => $cleanInfo,
+            'payload' => $data ?? ['raw' => $content],
         ]);
 
         $usersToNotify = User::whereHas('profile', function ($query) {
@@ -46,6 +61,5 @@ class ProcessTicketAttachment implements ShouldQueue
         })->get();
 
         Notification::send($usersToNotify, new TicketProcessed($this->ticket));
-
     }
 }
