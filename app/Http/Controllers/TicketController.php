@@ -19,30 +19,34 @@ class TicketController extends Controller
         ]);
     }
 
-    public function index()
-    {
-        $user = auth()->user();
+ public function index()
+{
+    $user = auth()->user();
+    $profile = $user->profile;
 
-        $profile = $user->profile;
+    $myCreatedTickets = Ticket::query()
+        ->with(['project', 'user'])
+        ->where('user_id', $user->id)
+        ->latest()
+        ->paginate(10, ['*'], 'my_tickets'); 
 
-        $tickets = Ticket::query()
-            ->with(['project', 'user']) 
-            ->where(function ($query) use ($user, $profile) {
-                // Regra 1: Tickets que eu criei
-                $query->where('user_id', $user->id);
+   
+    $projectTickets = collect(); 
 
-                
-                if ($profile && $profile->project_id) {
-                    $query->orWhere('project_id', $profile->project_id);
-                }
-            })
+    if ($profile && $profile->project_id) {
+        $projectTickets = Ticket::query()
+            ->with(['project', 'user'])
+            ->where('project_id', $profile->project_id)
+            ->where('user_id', '!=', $user->id) 
             ->latest()
-            ->paginate(10); 
-
-        return Inertia::render('Tickets/Index', [
-            'tickets' => $tickets,
-        ]);
+            ->paginate(10, ['*'], 'project_tickets');
     }
+
+    return Inertia::render('Tickets/Index', [
+        'myCreatedTickets' => $myCreatedTickets,
+        'projectTickets'   => $projectTickets,
+    ]);
+}
 
 public function store(Request $request)
 {
