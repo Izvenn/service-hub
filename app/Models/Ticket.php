@@ -11,7 +11,7 @@ class Ticket extends Model
 {
 
 use HasFactory;
-    protected $fillable = ['project_id', 'user_id', 'title', 'status','attachment_path'];
+    protected $fillable = ['project_id','company_id', 'user_id', 'title', 'status','attachment_path'];
 
     public function project(): BelongsTo
     {

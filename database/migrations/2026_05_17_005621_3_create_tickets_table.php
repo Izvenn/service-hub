@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('status', ['open', 'processing', 'closed'])->default('open');
             $table->timestamps();
             $table->string('attachment_path')->nullable();
+            $table->foreignId('company_id');
         });
     }
 

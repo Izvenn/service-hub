@@ -3,11 +3,14 @@
 namespace App\Jobs;
 
 use App\Models\Ticket;
+use App\Models\User;
+use App\Notifications\TicketProcessed;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
 class ProcessTicketAttachment implements ShouldQueue
@@ -18,25 +21,31 @@ class ProcessTicketAttachment implements ShouldQueue
 
     public function handle(): void
     {
-        // 1. Verifica se o arquivo realmente existe
+        $this->ticket->loadMissing('project');
+
         if (! $this->ticket->attachment_path || ! Storage::disk('public')->exists($this->ticket->attachment_path)) {
             return;
         }
 
-        // 2. Lê o conteúdo do arquivo
         $content = Storage::disk('public')->get($this->ticket->attachment_path);
         $data = json_decode($content, true);
 
-        // 3. Cria o TicketDetail (Relacionamento 1:1)
-        // Aqui simulamos o "enriquecimento" salvando metadados técnicos
-        $this->ticket->detail()->create([
-            'technical_info' => 'Processamento automatizado realizado em '.now()->format('d/m/Y H:i'),
-            'payload' => $data ?? ['raw_text' => $content], // Se não for JSON, salva como texto puro
+        $this->ticket->detail()->updateOrCreate(
+            ['ticket_id' => $this->ticket->id],
+            [
+
+                'payload' => $data ?? ['raw_text' => $content],
+            ]
+        );
+        $this->ticket->detail()->update([
+            'payload' => $data ?? ['raw_text' => $content],
         ]);
 
-        // 4. Atualiza o status do Ticket
-        $this->ticket->update(['status' => 'completed']);
+        $usersToNotify = User::whereHas('profile', function ($query) {
+            $query->where('project_id', $this->ticket->project_id);
+        })->get();
 
-        // Dica: Aqui você poderia disparar uma Notificação (Mail ou Database)
+        Notification::send($usersToNotify, new TicketProcessed($this->ticket));
+
     }
 }

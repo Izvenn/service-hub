@@ -11,13 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('user_profiles', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('user_id')->constrained()->onDelete('cascade');
-    $table->string('phone')->nullable();
-    $table->string('position')->nullable(); 
-    $table->timestamps();
-});
+        Schema::create('user_profiles', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('company_id')->constrained(); // Empresa do usuário
+            $table->foreignId('project_id')->constrained(); // Projeto atual do usuário
+            $table->string('phone')->nullable();
+            $table->string('position')->nullable();
+            $table->boolean('is_responsible')->default(false);
+            $table->timestamps();
+        });
     }
 
     /**

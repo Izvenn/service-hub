@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\Ticket;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -36,7 +37,7 @@ class TicketProcessed extends Notification
         return [
             'ticket_id' => $this->ticket->id,
             'title' => $this->ticket->title,
-            'message' => 'Seu ticket foi processado assincronamente.'
+            'message' => 'Seu ticket foi processado com anexo.'
         ];
     }
 }

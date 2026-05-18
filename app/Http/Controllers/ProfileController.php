@@ -16,29 +16,37 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): Response
-    {
-        return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-            'status' => session('status'),
-        ]);
-    }
+public function edit(Request $request): Response
+{
+    return Inertia::render('Profile/Edit', [
+        'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+        'status' => session('status'),
+        'user' => $request->user()->load(['profile.company', 'profile.project']),
+    ]);
+}
 
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
+  // app/Http/Controllers/ProfileController.php
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
+public function update(ProfileUpdateRequest $request): RedirectResponse
+{
+    $request->user()->fill($request->validated());
 
-        $request->user()->save();
-
-        return Redirect::route('profile.edit');
+    if ($request->user()->isDirty('email')) {
+        $request->user()->email_verified_at = null;
     }
+
+    $request->user()->save();
+
+    $request->user()->profile()->update([
+        'phone' => $request->input('phone'),
+        'position' => $request->input('position'),
+    ]);
+
+    return Redirect::route('profile.edit')->with('status', 'profile-updated');
+}
 
     /**
      * Delete the user's account.

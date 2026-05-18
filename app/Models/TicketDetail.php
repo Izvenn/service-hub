@@ -8,7 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class TicketDetail extends Model
 {
     use HasFactory;
+
     protected $fillable = ['ticket_id', 'technical_info', 'payload'];
+
+    protected $casts = [
+        'payload' => 'array',
+    ];
 
     public function ticket()
     {
